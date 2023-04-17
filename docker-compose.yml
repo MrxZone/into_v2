@@ -1,0 +1,175 @@
+version: '3'
+
+services:
+  into:
+    container_name: into
+    build:
+      context: .
+      dockerfile: Dockerfile
+    restart: always
+    ports:
+      - 5897:5897
+    volumes:
+      - .:/into_v2
+    environment:
+      INTOENV: TESTING
+      CELERY_BROKER_URL: "amqp://rabbitmq:rabbitmq@localhost:5672//"
+      RESULT_BACKEND: "redis://:redis123@localhost:6379/0"
+      TIMEZONE: 'Asia/Shanghai'
+      WORKER_CONCURRENCY: 20
+      CELERY_PREFETH_MULTIPLIRE: 5
+      WORKER_MAX_TASKS_PER_CHILD: 200
+      CELERY_TASK_TIME_LIMIT: 60 * 2
+    networks:
+      - into
+    depends_on:
+      - rabbitmq
+      - redis
+      - pg
+    command: [ "sh","-c", "/into_v2/app/run.sh" ]
+
+  worker:
+    container_name: worker
+    restart: always
+    build:
+      context: .
+      dockerfile: Dockerfile
+    volumes:
+      - .:/into_v2
+    command: [ "sh","-c", "/into_v2/app/celery_run.sh" ]
+    environment:
+      SQLALCHEMY_DATABASE_URI: "postgresql+asyncpg://postgres:123456@localhost:5432/postgres"
+      CELERY_BROKER_URL: "amqp://rabbitmq:rabbitmq@localhost:5672//"
+      RESULT_BACKEND: "redis://:redis123@localhost:6379/0"
+      TIMEZONE: 'Asia/Shanghai'
+      WORKER_CONCURRENCY: 20
+      CELERY_PREFETH_MULTIPLIRE: 5
+      WORKER_MAX_TASKS_PER_CHILD: 200
+      CELERY_TASK_TIME_LIMIT: 60 * 2
+    depends_on:
+      - into
+      - rabbitmq
+      - redis
+      - pg
+    networks:
+      - into
+
+  worker_did:
+    container_name: worker_did
+    restart: always
+    build:
+      context: .
+      dockerfile: Dockerfile
+    volumes:
+      - .:/into_v2
+    command: [ "sh","-c", "/into_v2/app/celery_worker_did.sh" ]
+    environment:
+      SQLALCHEMY_DATABASE_URI: "postgresql+asyncpg://postgres:123456@localhost:5432/postgres"
+      CELERY_BROKER_URL: "amqp://rabbitmq:rabbitmq@localhost:5672//"
+      RESULT_BACKEND: "redis://:redis123@localhost:6379/0"
+      TIMEZONE: 'Asia/Shanghai'
+      WORKER_CONCURRENCY: 20
+      CELERY_PREFETH_MULTIPLIRE: 5
+      WORKER_MAX_TASKS_PER_CHILD: 200
+      CELERY_TASK_TIME_LIMIT: 60 * 2
+    depends_on:
+      - into
+      - rabbitmq
+      - redis
+      - pg
+    networks:
+      - into
+
+  worker_faucet:
+    container_name: worker_faucet
+    restart: always
+    build:
+      context: .
+      dockerfile: Dockerfile
+    volumes:
+      - .:/into_v2
+    command: [ "sh","-c", "/into_v2/app/celery_worker_faucet.sh" ]
+    environment:
+      SQLALCHEMY_DATABASE_URI: "postgresql+asyncpg://postgres:123456@localhost:5432/postgres"
+      CELERY_BROKER_URL: "amqp://rabbitmq:rabbitmq@localhost:5672//"
+      RESULT_BACKEND: "redis://:redis123@localhost:6379/0"
+      TIMEZONE: 'Asia/Shanghai'
+      WORKER_CONCURRENCY: 20
+      CELERY_PREFETH_MULTIPLIRE: 5
+      WORKER_MAX_TASKS_PER_CHILD: 200
+      CELERY_TASK_TIME_LIMIT: 60 * 2
+    depends_on:
+      - into
+      - rabbitmq
+      - redis
+      - pg
+    networks:
+      - into
+
+  flower:
+    container_name: 'flower'
+    restart: always
+    build:
+      context: .
+      dockerfile: Dockerfile
+    volumes:
+      - .:/into_v2
+    environment:
+      SQLALCHEMY_DATABASE_URI: "postgresql+asyncpg://postgres:123456@localhost:5432/postgres"
+      CELERY_BROKER_URL: "amqp://rabbitmq:rabbitmq@localhost:5672//"
+      RESULT_BACKEND: "redis://:redis123@localhost:6379/0"
+      TIMEZONE: 'Asia/Shanghai'
+      WORKER_CONCURRENCY: 20
+      CELERY_PREFETH_MULTIPLIRE: 5
+      WORKER_MAX_TASKS_PER_CHILD: 200
+      CELERY_TASK_TIME_LIMIT: 60 * 2
+    command: [ "sh","-c", "/into_v2/app/flower_run.sh" ]
+    ports:
+      - 5555:5555
+    depends_on:
+      - into
+      - worker
+      - worker_did
+      - rabbitmq
+      - redis
+    networks:
+      - into
+
+  rabbitmq:
+    image: rabbitmq
+    container_name: 'rabbitmq'
+    restart: always
+    ports:
+      - 5462:5462
+    #      - 15672:15672 # 不是manager这个端口无用
+    environment:
+      RABBITMQ_DEFAULT_USER: rabbitmq
+      RABBITMQ_DEFAULT_PASS: rabbitmq
+    networks:
+      - into
+
+  redis:
+    image: redis
+    container_name: 'redis'
+    restart: always
+    ports:
+      - 6379:6379
+    command:
+      --requirepass redis123
+    networks:
+      - into
+
+  pg:
+    image: "postgres:13"
+    container_name: 'pg'
+    restart: always
+    ports:
+      - 5432:5432
+    environment:
+      POSTGRES_USER: postgres
+      POSTGRES_PASSWORD: 123456
+    networks:
+      - into
+networks:
+  into:
+    driver: bridge
