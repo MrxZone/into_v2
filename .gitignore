@@ -384,3 +384,5 @@ $RECYCLE.BIN/
 
 # Alembic-version
 alembic/versions/*
+alembic/
+poetry.lock
