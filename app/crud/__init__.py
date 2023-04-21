@@ -17,3 +17,8 @@ from .crud_faucet_bind import faucet_bind
 # from app.schemas.item import ItemCreate, ItemUpdate
 
 # item = CRUDBase[Item, ItemCreate, ItemUpdate](Item)
+from .crud_user_extra import users as user_extra
+from .crud_relations import relation
+from .crud_groups import groups
+from .crud_group_members import group_members
+from .crud_relations_json import relation_json
